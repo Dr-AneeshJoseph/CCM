@@ -1,0 +1,27 @@
+{
+  "name": "Counter-Current Multiplier Simulator",
+  "short_name": "CCM Simulator",
+  "description": "Interactive simulation of the Loop of Henle counter-current multiplier mechanism",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#0f172a",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["education", "medical"],
+  "lang": "en",
+  "author": "Dr. Diveen Sen Geeth"
+}
