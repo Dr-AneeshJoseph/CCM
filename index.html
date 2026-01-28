@@ -1,0 +1,3046 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Counter-Current Multiplier - Loop of Henle</title>
+    <style>
+/* === CSS Variables === */
+:root {
+    --bg-primary: #0f172a;
+    --bg-secondary: #1e293b;
+    --bg-card: rgba(30, 41, 59, 0.8);
+    --text-primary: #f1f5f9;
+    --text-secondary: #94a3b8;
+    --text-muted: #64748b;
+    --accent-blue: #3b82f6;
+    --accent-green: #22c55e;
+    --accent-yellow: #eab308;
+    --accent-red: #ef4444;
+    --accent-purple: #a855f7;
+    --border-color: rgba(148, 163, 184, 0.2);
+    --glass-bg: rgba(30, 41, 59, 0.6);
+    --glass-border: rgba(255, 255, 255, 0.1);
+    --shadow-lg: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+    --gradient-osmolarity: linear-gradient(180deg, #60a5fa 0%, #fbbf24 50%, #ea580c 100%);
+}
+
+/* === Reset & Base === */
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+html {
+    overflow-y: scroll;
+    /* Force scrollbar to prevent wobble */
+}
+
+body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    /* ... existing background styles ... */
+    background: var(--bg-primary);
+    background-image:
+        radial-gradient(ellipse at 20% 80%, rgba(59, 130, 246, 0.15) 0%, transparent 50%),
+        radial-gradient(ellipse at 80% 20%, rgba(168, 85, 247, 0.1) 0%, transparent 50%);
+    color: var(--text-primary);
+    min-height: 100vh;
+    overflow-x: hidden;
+}
+
+/* ... content ... */
+
+.step-explanation p {
+    font-size: 0.85rem;
+    line-height: 1.6;
+    color: var(--text-secondary);
+    min-height: 8em;
+    /* Reserve space for ~6 lines to prevent resizing with long text */
+}
+
+/* === App Container === */
+.app-container {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    max-width: 1600px;
+    margin: 0 auto;
+    padding: 1rem;
+}
+
+/* === Header === */
+header {
+    text-align: center;
+    padding: 1.5rem 2rem;
+    background: var(--glass-bg);
+    backdrop-filter: blur(20px);
+    border: 1px solid var(--glass-border);
+    border-radius: 16px;
+    margin-bottom: 1rem;
+}
+
+header h1 {
+    font-size: 2rem;
+    font-weight: 700;
+    background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 0.25rem;
+}
+
+header .subtitle {
+    color: var(--text-secondary);
+    font-size: 1rem;
+    font-weight: 400;
+}
+
+/* === Main Layout === */
+/* === Main Layout === */
+main {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    flex: 1;
+}
+
+/* === Description Panel (Bottom) === */
+.description-panel {
+    background: var(--glass-bg);
+    backdrop-filter: blur(20px);
+    border: 1px solid var(--glass-border);
+    border-radius: 16px;
+    padding: 1rem 1.5rem;
+    margin-top: 0.5rem;
+    transition: all 0.3s ease;
+    overflow: hidden;
+}
+
+.description-panel.collapsed {
+    padding: 0;
+    height: 0;
+    opacity: 0;
+    margin: 0;
+    border: none;
+}
+
+.desc-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.5rem;
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 0.5rem;
+}
+
+.desc-header h2 {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--accent-yellow);
+    margin: 0;
+}
+
+.desc-content p {
+    font-size: 0.95rem;
+    line-height: 1.6;
+    color: var(--text-primary);
+    min-height: 8em;
+    /* Reserve space for ~5 lines to prevent jitter */
+    margin: 0;
+}
+
+/* Mini Buttons */
+.btn-mini {
+    background: rgba(59, 130, 246, 0.2);
+    border: 1px solid var(--accent-blue);
+    color: var(--accent-blue);
+    font-size: 0.7rem;
+    padding: 2px 8px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: 600;
+}
+
+.btn-mini:hover {
+    background: var(--accent-blue);
+    color: white;
+}
+
+.btn-icon {
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    font-size: 1.2rem;
+    cursor: pointer;
+    line-height: 1;
+    padding: 0 5px;
+}
+
+.btn-icon:hover {
+    color: var(--text-primary);
+}
+
+/* === Canvas Container === */
+.canvas-container {
+    flex: 1.5;
+    position: relative;
+    background: var(--glass-bg);
+    backdrop-filter: blur(20px);
+    border: 1px solid var(--glass-border);
+    border-radius: 16px;
+    padding: 1.5rem;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    overflow: hidden;
+}
+
+#ccmCanvas {
+    border-radius: 12px;
+    background: linear-gradient(180deg,
+            rgba(30, 41, 59, 1) 0%,
+            rgba(30, 41, 59, 0.95) 100%);
+}
+
+/* Gradient Scale */
+.gradient-scale {
+    position: absolute;
+    left: 20px;
+    top: 50%;
+    transform: translateY(-50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.scale-bar {
+    width: 20px;
+    height: 300px;
+    background: var(--gradient-osmolarity);
+    border-radius: 10px;
+    border: 2px solid var(--glass-border);
+}
+
+.scale-label {
+    font-size: 0.75rem;
+    text-align: center;
+    color: var(--text-secondary);
+}
+
+.scale-label span {
+    display: block;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+/* === Control Panel === */
+.control-panel {
+    flex: 0.6;
+    min-width: 340px;
+    max-width: 400px;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.panel-section {
+    background: var(--glass-bg);
+    backdrop-filter: blur(20px);
+    border: 1px solid var(--glass-border);
+    border-radius: 16px;
+    padding: 1.25rem;
+    /* Prevent layout shifting from content changes */
+    flex-shrink: 0;
+    transition: height 0.2s ease;
+}
+
+/* Fix width of value badges to prevent label jumping */
+.value-badge {
+    background: rgba(99, 102, 241, 0.2);
+    color: #818cf8;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-family: 'Inter', monospace;
+    font-weight: 700;
+    min-width: 60px;
+    /* Fixed width */
+    text-align: right;
+    display: inline-block;
+}
+
+.panel-section h2 {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+/* Info Section */
+.info-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.75rem;
+}
+
+.info-item {
+    background: rgba(15, 23, 42, 0.6);
+    border-radius: 12px;
+    padding: 0.75rem;
+    text-align: center;
+    border: 1px solid var(--border-color);
+}
+
+.info-label {
+    display: block;
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 0.25rem;
+}
+
+.info-value {
+    display: block;
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--accent-blue);
+}
+
+/* Controls Section */
+.button-row {
+    display: flex;
+    gap: 0.75rem;
+    margin-bottom: 0.75rem;
+}
+
+.btn {
+    flex: 1;
+    padding: 0.75rem 1rem;
+    border: none;
+    border-radius: 10px;
+    font-family: inherit;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, var(--accent-blue), #2563eb);
+    color: white;
+    box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3);
+}
+
+.btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(59, 130, 246, 0.4);
+}
+
+.btn-secondary {
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    border: 1px solid var(--border-color);
+}
+
+.btn-secondary:hover {
+    background: rgba(71, 85, 105, 0.6);
+}
+
+.btn-accent {
+    background: linear-gradient(135deg, var(--accent-green), #16a34a);
+    color: white;
+    box-shadow: 0 4px 15px rgba(34, 197, 94, 0.3);
+}
+
+.btn-accent:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(34, 197, 94, 0.4);
+}
+
+.btn-accent.playing {
+    background: linear-gradient(135deg, var(--accent-yellow), #ca8a04);
+    box-shadow: 0 4px 15px rgba(234, 179, 8, 0.3);
+}
+
+.btn-danger {
+    background: rgba(239, 68, 68, 0.2);
+    color: var(--accent-red);
+    border: 1px solid var(--accent-red);
+}
+
+.btn-danger:hover {
+    background: var(--accent-red);
+    color: white;
+}
+
+/* Legend Section */
+.legend-items {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+}
+
+.legend-color {
+    width: 24px;
+    height: 24px;
+    border-radius: 6px;
+    flex-shrink: 0;
+}
+
+.legend-icon {
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.9rem;
+    flex-shrink: 0;
+}
+
+.legend-icon.water {
+    color: #60a5fa;
+}
+
+.legend-icon.ion {
+    color: #fbbf24;
+    font-size: 0.7rem;
+    font-weight: 700;
+}
+
+.legend-icon.pump {
+    color: var(--accent-green);
+}
+
+/* Step Explanation */
+.step-explanation {
+    flex: 1;
+}
+
+.step-explanation p {
+    font-size: 0.85rem;
+    line-height: 1.6;
+    color: var(--text-secondary);
+}
+
+.step-explanation strong {
+    color: var(--accent-blue);
+}
+
+/* === Footer === */
+footer {
+    text-align: center;
+    padding: 1rem;
+    color: var(--text-muted);
+    font-size: 0.8rem;
+    margin-top: 1rem;
+}
+
+/* === Animations === */
+@keyframes pulse {
+
+    0%,
+    100% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.5;
+    }
+}
+
+@keyframes float {
+
+    0%,
+    100% {
+        transform: translateY(0);
+    }
+
+    50% {
+        transform: translateY(-5px);
+    }
+}
+
+/* === Responsive === */
+/* === Mobile Optimized Responsive Styles === */
+
+/* Tablets & Small Laptops (Portrait/Stacked) */
+@media (max-width: 1200px) {
+    main {
+        flex-direction: column;
+    }
+
+    .control-panel {
+        max-width: 100%;
+        flex-direction: row;
+        flex-wrap: wrap;
+    }
+
+    .panel-section {
+        flex: 1 1 300px;
+        /* Flex basis 300px to allow wrapping */
+        min-width: 280px;
+    }
+}
+
+/* Mobile Phones (Portrait) */
+@media (max-width: 768px) {
+    .app-container {
+        padding: 0.5rem;
+    }
+
+    header {
+        padding: 1rem;
+        border-radius: 12px;
+        margin-bottom: 0.75rem;
+    }
+
+    header h1 {
+        font-size: 1.4rem;
+    }
+
+    header .subtitle {
+        font-size: 0.8rem;
+    }
+
+    /* Force canvas to be responsive */
+    .canvas-container {
+        padding: 0.5rem;
+        min-height: 400px;
+        /* Ensure enough height for the long loops */
+        border-radius: 12px;
+    }
+
+    #ccmCanvas {
+        width: 100%;
+        height: auto;
+        aspect-ratio: 900/600;
+        /* Preserve aspect ratio logic */
+    }
+
+    /* Hide gradient scale on very small screens to save space */
+    .gradient-scale {
+        display: none;
+    }
+
+    /* Bigger Touch Targets */
+    .btn {
+        padding: 0.9rem;
+        font-size: 1rem;
+    }
+}
+
+/* Mobile Phones (Landscape) */
+@media (orientation: landscape) and (max-height: 500px) {
+    .app-container {
+        padding: 0;
+        height: 100vh;
+    }
+
+    header {
+        display: none;
+        /* Hide header in landscape to maximize sim view */
+    }
+
+    main {
+        flex-direction: row;
+        /* Side by side */
+        height: 100%;
+    }
+
+    .simulation-row {
+        height: 100%;
+    }
+
+    .left-column {
+        flex: 2;
+        height: 100%;
+        overflow-y: auto;
+    }
+
+    .canvas-container {
+        height: 100%;
+        border-radius: 0;
+        border: none;
+    }
+
+    #ccmCanvas {
+        height: 90vh;
+        /* Maximize height */
+        width: auto;
+    }
+
+    .control-panel {
+        flex: 1;
+        min-width: 280px;
+        max-width: 350px;
+        height: 100%;
+        overflow-y: auto;
+        padding: 0.5rem;
+    }
+}
+
+/* =========================================
+   NEW STYLES FOR INTERACTIVE CONTROLS
+   ========================================= */
+
+/* Speed Buttons */
+.speed-buttons {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+}
+
+.speed-btn {
+    flex: 1;
+    padding: 0.5rem;
+    font-size: 0.85rem;
+    font-weight: 600;
+    border: 1px solid #334155;
+    background: #1e293b;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+    color: #94a3b8;
+}
+
+.speed-btn:hover {
+    background: #334155;
+    color: #f1f5f9;
+}
+
+.speed-btn.active {
+    background: #3b82f6;
+    /* Blue accent */
+    color: white;
+    border-color: #3b82f6;
+    box-shadow: 0 4px 10px rgba(59, 130, 246, 0.3);
+}
+
+.speed-btn.turbo {
+    color: #e879f9;
+    border-color: #a855f7;
+    background: rgba(168, 85, 247, 0.1);
+}
+
+.speed-btn.turbo:hover {
+    background: rgba(168, 85, 247, 0.2);
+    color: #f0abfc;
+}
+
+.speed-btn.turbo.active {
+    background: linear-gradient(135deg, #a855f7, #ec4899);
+    color: white;
+    border-color: transparent;
+    box-shadow: 0 4px 15px rgba(236, 72, 153, 0.4);
+}
+
+/* Parameter Sliders */
+.params-section {
+    border-top: 2px solid #6366f1;
+    /* Indigo top border */
+}
+
+.slider-control {
+    margin-top: 1rem;
+    padding-top: 0.8rem;
+    border-top: 1px solid rgba(148, 163, 184, 0.1);
+}
+
+.slider-control:first-of-type {
+    border-top: none;
+    padding-top: 0;
+}
+
+.slider-control label {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.85rem;
+    font-weight: 500;
+    margin-bottom: 0.5rem;
+    color: #e2e8f0;
+}
+
+.value-badge {
+    background: rgba(99, 102, 241, 0.2);
+    /* Indigo tint */
+    color: #818cf8;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-family: 'Inter', monospace;
+    font-weight: 700;
+}
+
+.help-text {
+    font-size: 0.7rem;
+    color: #64748b;
+    margin-top: 0.3rem;
+    line-height: 1.3;
+    min-height: 2.7em;
+    /* Reserve height for 2 lines to prevent wobble */
+    display: flex;
+    align-items: center;
+    /* Vertically center if single line */
+}
+
+/* Range Input Styling */
+input[type=range] {
+    width: 100%;
+    margin: 6px 0;
+    height: 6px;
+    background: #334155;
+    border-radius: 3px;
+    appearance: none;
+    outline: none;
+}
+
+input[type=range]::-webkit-slider-thumb {
+    appearance: none;
+    width: 16px;
+    height: 16px;
+    background: #6366f1;
+    /* Indigo thumb */
+    border-radius: 50%;
+    cursor: pointer;
+    transition: transform 0.1s;
+    border: 2px solid #fff;
+}
+
+input[type=range]::-webkit-slider-thumb:hover {
+    transform: scale(1.2);
+}
+
+/* === FOCUS MODE (MOBILE PORTRAIT - REFINED) === */
+@media (max-width: 768px) {
+
+    body,
+    html {
+        height: 100%;
+        overflow: hidden;
+    }
+
+    .app-container {
+        padding: 0 !important;
+        height: 100vh;
+        display: flex;
+        flex-direction: column;
+        max-width: 100%;
+    }
+
+    /* Hide Title Header */
+    header {
+        display: none !important;
+    }
+
+    main {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+        gap: 0;
+        padding: 0 !important;
+    }
+
+    .simulation-row {
+        flex-direction: column;
+        height: 100%;
+        gap: 0;
+        align-items: stretch !important;
+        margin: 0 !important;
+    }
+
+    /* 1. TOP: Description Panel (Small) */
+    #descriptionPanel {
+        display: block !important;
+        order: 0;
+        border-radius: 0 !important;
+        height: 120px !important;
+        /* Fixed height for max text (approx 6 lines) */
+        overflow-y: auto !important;
+        /* Scroll if text exceeds */
+        background: #1e293b !important;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
+        padding: 10px 15px !important;
+        margin: 0 !important;
+        flex-shrink: 0;
+        z-index: 10;
+    }
+
+    .desc-header {
+        display: none !important;
+    }
+
+    /* Hide "Step Explanation" title to save space */
+    .desc-content p {
+        font-size: 0.85rem !important;
+        line-height: 1.3 !important;
+        min-height: 0 !important;
+        margin: 0 !important;
+    }
+
+    /* 2. MIDDLE: Animation (3/4 of Screen) */
+    .left-column {
+        flex: 0 0 75vh !important;
+        /* Fixed 3/4 height */
+        order: 1;
+        height: 75vh !important;
+        overflow: hidden !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        width: 100% !important;
+        position: relative;
+    }
+
+    .canvas-container {
+        width: 100% !important;
+        height: 100% !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        border: none !important;
+        border-radius: 0 !important;
+        background: #0f172a;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    #ccmCanvas {
+        width: 100% !important;
+        height: 100% !important;
+        object-fit: contain;
+        /* Will fit perfectly now due to native resolution match */
+        max-height: 100%;
+        margin: 0 auto;
+    }
+
+    /* Hide others */
+    .gradient-scale,
+    .graph-panel {
+        display: none !important;
+    }
+
+    /* 3. BOTTOM: Buttons + Slider (One Line) */
+    /* 3. BOTTOM: Buttons + Slider (Two Rows) */
+    .control-panel {
+        order: 2;
+        position: relative;
+        width: 100%;
+        height: auto !important;
+        /* Allow growing */
+        min-height: 90px;
+        background: #1e293b;
+        border-top: 1px solid rgba(255, 255, 255, 0.1);
+        padding: 10px 10px !important;
+        display: flex;
+        flex-direction: column !important;
+        /* Stack vertically */
+        align-items: center;
+        justify-content: flex-start;
+        gap: 10px;
+        margin: 0 !important;
+        flex-shrink: 0;
+    }
+
+    .control-panel>.panel-section {
+        display: none !important;
+    }
+
+    .control-panel>.controls-section {
+        display: flex !important;
+        padding: 0;
+        border: none;
+        background: transparent;
+        width: 100%;
+        flex-direction: column !important;
+        /* Stack children */
+        align-items: center;
+        justify-content: flex-start;
+        height: auto !important;
+        margin: 0 !important;
+        gap: 12px;
+    }
+
+    /* Hide heavy elements */
+    .controls-section h2 {
+        display: none !important;
+    }
+
+    /* Row 1: Buttons */
+    .button-row {
+        flex: 0 0 auto;
+        width: 100%;
+        margin: 0;
+        gap: 8px;
+        display: flex;
+        justify-content: center;
+        /* Center buttons */
+        order: 1;
+    }
+
+    /* Row 2: Speed Control Group (Full Computer Version) */
+    .speed-control-group {
+        display: flex !important;
+        flex-direction: column !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        margin: 0 !important;
+        order: 2;
+        gap: 4px;
+    }
+
+    /* Speed Header Row */
+    .speed-control-group label {
+        display: flex !important;
+        justify-content: space-between;
+        width: 100%;
+        font-size: 0.85rem;
+        color: #e2e8f0;
+        margin-bottom: 2px;
+    }
+
+    .speed-val-label,
+    .value-badge {
+        display: inline-block !important;
+        /* Ensure label is visible */
+        font-size: 0.8rem;
+    }
+
+    /* Slider Container */
+    .slider-container {
+        display: flex !important;
+        width: 100% !important;
+        align-items: center;
+        gap: 10px;
+    }
+
+    /* Slider styling */
+    #speedSlider {
+        display: block !important;
+        width: 100% !important;
+        height: 6px !important;
+        background: #475569 !important;
+        appearance: none;
+
+        #speedSlider::-webkit-slider-thumb {
+            width: 18px !important;
+            /* easy touch */
+            height: 18px !important;
+            appearance: none;
+            background: #3b82f6;
+            border-radius: 50%;
+            cursor: pointer;
+        }
+
+        /* Speed Multiplier Select Styling */
+        .speed-select {
+            display: block !important;
+            height: 30px !important;
+            padding: 0 5px !important;
+            border-radius: 4px !important;
+            background: #334155 !important;
+            color: white !important;
+            border: 1px solid rgba(255, 255, 255, 0.1) !important;
+            font-size: 0.8rem !important;
+            width: 60px !important;
+        }
+
+        /* Hide Turbo for clarity if it creates clutter, or keep it */
+        #btnTurbo {
+            display: none !important;
+        }
+
+        /* Bigger Buttons */
+        .btn {
+            font-size: 0.9rem !important;
+            /* Slightly larger text */
+            padding: 0 16px !important;
+            height: 44px !important;
+            /* Taller touch targets */
+            border-radius: 22px !important;
+            flex: 0 0 auto;
+            justify-content: center;
+        }
+
+        /* Small Reset Button Logic */
+        #btnReset {
+            order: -1;
+            /* Ensure it's first (left side) */
+            width: 36px !important;
+            height: 36px !important;
+            padding: 0 !important;
+            border-radius: 50% !important;
+            background: rgba(255, 255, 255, 0.1) !important;
+            font-size: 1.2rem !important;
+            margin-right: 5px;
+            /* Slight gap from main controls */
+            min-width: 0 !important;
+            /* Override explicit min-widths */
+        }
+    }
+
+</style>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="manifest" href="manifest.json">
+    <link rel="icon" type="image/png" href="icon-192.png">
+    <link rel="apple-touch-icon" href="icon-192.png">
+    <meta name="theme-color" content="#0f172a">
+</head>
+
+<body>
+    <div class="app-container">
+        <header>
+            <h1>🧬 Counter-Current Multiplier System</h1>
+            <p class="subtitle">Loop of Henle - Step-by-Step Mechanism</p>
+        </header>
+
+        <main>
+            <div class="simulation-row" style="display: flex; gap: 1.5rem; flex: 1; align-items: flex-start;">
+                <!-- Left Column: Animation + Description -->
+                <div class="left-column"
+                    style="display: flex; flex-direction: column; gap: 1rem; flex: 1; min-width: 0;">
+                    <div class="canvas-container">
+                        <canvas id="ccmCanvas"></canvas>
+                        <div class="gradient-scale">
+                            <div class="scale-label top">Cortex<br><span>300 mOsm</span></div>
+                            <div class="gradient-bar"></div>
+                            <div class="scale-label bottom">Medulla<br><span>1200 mOsm</span></div>
+                        </div>
+                    </div>
+
+                    <!-- Bottom Description Panel (Now directly under animation) -->
+                    <div id="descriptionPanel" class="description-panel">
+                        <div class="desc-header">
+                            <h2>💡 Step Explanation</h2>
+                            <button id="btnToggleDesc" class="btn-icon" title="Hide Description">▼</button>
+                        </div>
+                        <div id="descContent" class="desc-content">
+                            <p id="stepDescription">
+                                <strong>Initial State:</strong> Fluid enters from the Proximal Convoluted Tubule at 300
+                                mOsm
+                                (isosmotic with plasma).
+                                Click "Step Forward" to begin the counter-current multiplier cycle.
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Live Analysis Graph -->
+                    <div class="panel-section graph-panel"
+                        style="background: var(--glass-bg); backdrop-filter: blur(20px); border: 1px solid var(--glass-border); border-radius: 16px; padding: 1rem; margin-top: 0.5rem;">
+                        <div
+                            style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                            <h2 style="font-size: 1rem; color: #fff; margin: 0;">📈 Live Gradient Analysis</h2>
+                            <div class="graph-legend" style="display: flex; gap: 1rem; font-size: 0.75rem;">
+                                <span style="color: #ef4444;">● Deep Medulla</span>
+                                <span style="color: #3b82f6;">● Outflow (Top)</span>
+                            </div>
+                        </div>
+
+                        <!-- Graph Wrapper with Side Slider -->
+                        <div class="graph-wrapper" style="display: flex; gap: 10px; align-items: stretch;">
+                            <!-- Vertical Slider Sidebar -->
+                            <div class="vertical-slider-container"
+                                style="display: flex; flex-direction: column; align-items: center; justify-content: center; width: 30px;">
+                                <div class="slider-label-vertical"
+                                    style="writing-mode: vertical-rl; transform: rotate(180deg); font-size: 0.7rem; color: #94a3b8; margin-bottom: 5px;">
+                                    Amplitude Zoom</div>
+                                <input type="range" id="yAxisScale" min="1" max="5" step="0.5" value="1"
+                                    style="writing-mode: bt-lr; /* IE/Edge */ -webkit-appearance: slider-vertical; width: 8px; height: 100px;">
+                            </div>
+
+                            <canvas id="graphCanvas"
+                                style="flex: 1; height: 200px; background: rgba(15, 23, 42, 0.4); border-radius: 8px;"></canvas>
+                        </div>
+
+                        <!-- Graph Controls (X-Axis & Speed only) -->
+                        <div
+                            style="display: flex; gap: 1.5rem; margin-top: 0.75rem; align-items: center; flex-wrap: wrap;">
+                            <div class="slider-control" style="border: none; margin: 0; padding: 0; flex: 1;">
+                                <label for="xAxisScale" style="font-size: 0.7rem; margin-bottom: 2px;">
+                                    X-Axis: <span id="xAxisVal">10</span> Cycles/Div
+                                </label>
+                                <input type="range" id="xAxisScale" min="1" max="50" step="1" value="10">
+                            </div>
+                            <!-- Y-Axis Slider removed from here -->
+                            <div class="slider-control" style="border: none; margin: 0; padding: 0; flex: 1;">
+                                <label for="timeScaleSlider" style="font-size: 0.7rem; margin-bottom: 2px;">
+                                    Rate: <span id="timeScaleVal">1.0</span> Cycles/s (<span
+                                        id="timePerCycleVal">1.0s</span>)
+                                </label>
+                                <input type="range" id="timeScaleSlider" min="0.5" max="5.0" step="0.5" value="1.0">
+                            </div>
+                        </div>
+                        <div id="maxGradientStat"
+                            style="font-size: 0.8rem; color: #facc15; margin-top: 0.5rem; font-weight: 500;">
+                            Max Gradient (1200) not reached yet.
+                        </div>
+                    </div>
+                </div>
+
+                <aside class="control-panel">
+                    <div class="panel-section info-section">
+                        <div
+                            style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem;">
+                            <h2 style="border: none; margin: 0; padding: 0;">📊 Status</h2>
+                            <button id="btnShowDesc" class="btn-mini" style="display: none;"
+                                title="Show Explanation">Show Info ▲</button>
+                        </div>
+                        <div class="info-grid">
+                            <div class="info-item">
+                                <span class="info-label">Cycle</span>
+                                <span class="info-value" id="cycleCount">0</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="info-label">Step</span>
+                                <span class="info-value" id="stepName">Initial</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="info-label">Max Gradient</span>
+                                <span class="info-value" id="maxGradient">300 mOsm</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="info-label">Exit Fluid</span>
+                                <span class="info-value" id="exitFluid">300 mOsm</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="panel-section controls-section">
+                        <h2>🎮 Simulation Controls</h2>
+
+                        <!-- Playback Controls -->
+                        <div class="button-row">
+                            <button id="btnStepBack" class="btn btn-secondary" title="Step Back">⏮</button>
+                            <button id="btnReset" class="btn btn-secondary" title="Reset">↺</button>
+                            <button id="btnAutoPlay" class="btn btn-accent">▶ Auto Play</button>
+                            <button id="btnStepForward" class="btn btn-primary" title="Step Forward">⏭</button>
+                        </div>
+
+                        <!-- Speed Controls -->
+                        <div class="speed-control-group">
+                            <label style="display: flex; justify-content: space-between;">
+                                Animation Speed
+                                <span id="speedVal" class="value-badge">Normal (3s)</span>
+                            </label>
+                            <div class="slider-container"
+                                style="display: flex; gap: 8px; align-items: center; margin: 5px 0;">
+                                <span style="font-size: 0.75rem; color: var(--text-muted);">Slow</span>
+                                <input type="range" id="speedSlider" min="0" max="100" value="50">
+                                <select id="speedMultiplier" class="speed-select" title="Speed Multiplier">
+                                    <option value="1">1x</option>
+                                    <option value="2">2x</option>
+                                    <option value="3">3x</option>
+                                    <option value="5">5x</option>
+                                    <option value="10">⚡</option>
+                                </select>
+                            </div>
+                            <button id="btnTurbo" class="speed-btn turbo"
+                                style="width: 100%; text-align: center; justify-content: center;">
+                                🚀 Turbo Mode (Instant)
+                            </button>
+                        </div>
+
+
+                    </div>
+
+                    <div class="panel-section params-section">
+                        <h2>⚙️ Physiological Parameters</h2>
+
+                        <!-- Pump Strength -->
+                        <div class="slider-control">
+                            <label for="pumpStrengthSlider">
+                                Pump Strength (Active Transport)
+                                <span id="pumpStrengthVal" class="value-badge">100%</span>
+                            </label>
+                            <input type="range" id="pumpStrengthSlider" min="50" max="150" step="10" value="100">
+                            <div class="help-text">Controls transport capacity (Vmax).</div>
+                        </div>
+
+                        <!-- Pump Gradient Limit -->
+                        <div class="slider-control">
+                            <label for="gradientSlider">
+                                Max Gradient Cap (Diuretic)
+                                <span id="gradientValue" class="value-badge">200</span>
+                            </label>
+                            <input type="range" id="gradientSlider" min="0" max="200" step="10" value="200">
+                        </div>
+
+                        <!-- Washout Controls -->
+                        <div
+                            style="border-top: 1px solid rgba(148, 163, 184, 0.1); margin-top: 1rem; padding-top: 0.8rem;">
+                            <h3 style="font-size: 0.85rem; color: #94a3b8; font-weight: 600; margin-bottom: 0.5rem;">
+                                Washout
+                                (Vasa Recta)</h3>
+
+                            <!-- Sets Slider -->
+                            <div class="slider-control" style="margin-top: 0; padding-top: 0; border: none;">
+                                <label for="washoutSetsSlider">
+                                    Sets per Flush
+                                    <span id="washoutSetsVal" class="value-badge">Off</span>
+                                </label>
+                                <input type="range" id="washoutSetsSlider" min="0" max="3" step="1" value="0">
+                            </div>
+
+                            <!-- Frequency Slider -->
+                            <div class="slider-control" style="margin-top: 0; padding-top: 0.5rem; border: none;">
+                                <label for="washoutFreqSlider">
+                                    Frequency
+                                    <span id="washoutFreqVal" class="value-badge">Every Cycle</span>
+                                </label>
+                                <input type="range" id="washoutFreqSlider" min="1" max="10" step="1" value="1">
+                                <div class="help-text" id="washoutHelp">Set sets to >0 to enable.</div>
+                            </div>
+                        </div>
+
+                        <!-- Particle Animation Speed -->
+                        <div class="slider-control">
+                            <label for="particleSpeedSlider">
+                                Particle Movement Speed
+                                <span id="particleSpeedVal" class="value-badge">1.0x</span>
+                            </label>
+                            <input type="range" id="particleSpeedSlider" min="10" max="200" step="10" value="100">
+                            <div class="help-text">Controls speed of ions/water moving.</div>
+                        </div>
+                    </div>
+
+                    <div class="panel-section legend-section">
+                        <h2>📝 Legend</h2>
+                        <div class="legend-items">
+                            <div class="legend-item">
+                                <div class="legend-color"
+                                    style="background: linear-gradient(180deg, #60a5fa, #1e3a5f);">
+                                </div>
+                                <span>Descending Limb (Water permeable)</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color"
+                                    style="background: linear-gradient(180deg, #4ade80, #166534);">
+                                </div>
+                                <span>Ascending Limb (Impermeable, pumps NaCl)</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #fbbf24;"></div>
+                                <span>Interstitium</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-icon water">💧</div>
+                                <span>Water molecules leaving</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-icon ion">Na⁺</div>
+                                <span>Ions being pumped out</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-icon pump">⚡</div>
+                                <span>Active pump (Na⁺/K⁺/2Cl⁻)</span>
+                            </div>
+                        </div>
+                    </div>
+
+                </aside>
+            </div> <!-- End of simulation-row -->
+        </main>
+
+        <footer>
+            <p>MBBS Physiology - Renal System | Counter-Current Multiplier Mechanism</p>
+        </footer>
+    </div>
+
+    <script>
+/**
+ * Counter-Current Multiplier Animation
+ * Demonstrates the step-by-step mechanism of the Loop of Henle
+ */
+
+// ==================== CONFIGURATION ====================
+const CONFIG = {
+    canvasWidth: 450,   // Mobile Native Width
+    canvasHeight: 900,  // Mobile Native Height (approx 3/4 screen 9:20 ratio)
+    numSegments: 12,
+    pumpGradient: 200,
+    maxOsmolarity: 1200,
+    minOsmolarity: 100,
+    plasmaOsm: 300,
+    animationDuration: 2500,
+    pumpStrength: 100,
+    enableWashout: true,
+    washoutSets: 1,
+    washoutFreq: 1,
+    particleSpeedMod: 1.0,
+    activePumpSegments: Array.from({ length: 12 }, (_, i) => i)
+};
+
+
+// ... existing code ...
+
+
+
+// ==================== STATE MANAGEMENT ====================
+const State = {
+    // Tubular fluid osmolarity at each level (index 0 = cortex, 5 = deep medulla)
+    descending: new Array(CONFIG.numSegments).fill(CONFIG.plasmaOsm),
+    ascending: new Array(CONFIG.numSegments).fill(CONFIG.plasmaOsm),
+
+    // Interstitial fluid osmolarity
+    interstitium: new Array(CONFIG.numSegments).fill(CONFIG.plasmaOsm),
+
+    // Animation state
+    currentStep: 'INITIAL',   // INITIAL, PUMP, EQUILIBRATE, FLOW
+    cycleCount: 0,
+    stepIndex: 0,             // 0=Initial, 1=Pump, 2=Equilibrate, 3=Flow
+
+    // Playback
+    isPlaying: false,
+    animationSpeed: 1.0,
+
+    // Particles for animation
+    particles: [],
+
+    // Fluid packets for flow visualization
+    fluidPackets: [],
+
+    // Flow animation state
+    flowAnimating: false,
+    flowProgress: 0,  // 0 to 1 during FLOW step
+
+    // Pending state for delayed osmolarity update (applied after animation)
+    pendingFlowState: null,
+
+    // History for step back
+    history: [],
+
+    // Track last pump amounts for visualization labels
+    // Track last pump amounts for visualization labels
+    lastPumpAmounts: new Array(CONFIG.numSegments).fill(0),
+
+    // Graph Data History
+    graphData: [], // Array of { cycle: 0, time: 0, deepOsm: 300, outflowOsm: 300 }
+    maxGradientCycle: null // Cycle number when 1200 mOsm is first reached
+};
+
+// Step descriptions for educational display
+const STEP_INFO = {
+    'INITIAL': {
+        name: 'Initial',
+        description: '<strong>Initial State:</strong> Isosmotic fluid (300 mOsm) from the Proximal Convoluted Tubule enters the descending limb. The interstitium and all segments start at plasma osmolarity. Click "Step Forward" to begin the counter-current multiplier cycle.'
+    },
+    'PUMP': {
+        name: 'Pump',
+        description: '<strong>Step 1 - Active Pumping:</strong> The thick ascending limb actively pumps Na⁺, K⁺, and 2Cl⁻ ions into the interstitium using Na⁺/K⁺/2Cl⁻ cotransporters. This makes the ascending limb fluid MORE DILUTE and the interstitium MORE CONCENTRATED. This is the "Single Effect" that creates a ~200 mOsm gradient.'
+    },
+    'EQUILIBRATE': {
+        name: 'Equilibrate',
+        description: '<strong>Step 2 - Water Equilibration:</strong> The descending limb is permeable to water but impermeable to solutes. Water leaves the descending limb by osmosis to equilibrate with the now-hypertonic interstitium. The fluid in the descending limb becomes more concentrated.'
+    },
+    'FLOW': {
+        name: 'Flow',
+        description: '<strong>Step 3 - Flow Advancement:</strong> Tubular fluid moves forward - down the descending limb, around the hairpin turn, and up the ascending limb. New isosmotic fluid (300 mOsm) enters from the PCT. The concentrated fluid from the hairpin moves into the ascending limb for the next pump cycle.'
+    }
+};
+
+// ==================== PARTICLES SYSTEM ====================
+class Particle {
+    constructor(x, y, type, targetX, targetY, label = null) {
+        this.x = x;
+        this.y = y;
+        this.startX = x;
+        this.startY = y;
+        this.targetX = targetX;
+        this.targetY = targetY;
+        this.type = type; // 'water' or 'ion'
+        this.label = label; // Optional text label (e.g. "100 mOsm")
+        this.progress = 0;
+        this.opacity = 1;
+        this.size = type === 'water' ? 6 : 8;
+    }
+
+    update(deltaProgress) {
+        this.progress += deltaProgress;
+        if (this.progress > 1) this.progress = 1;
+
+        // Ease out cubic
+        const t = 1 - Math.pow(1 - this.progress, 3);
+        this.x = this.startX + (this.targetX - this.startX) * t;
+        this.y = this.startY + (this.targetY - this.startY) * t;
+
+        // Fade out at end
+        if (this.progress > 0.8) {
+            this.opacity = 1 - (this.progress - 0.8) / 0.2;
+        }
+
+        return this.progress < 1;
+    }
+
+    draw(ctx) {
+        ctx.save();
+        ctx.globalAlpha = this.opacity;
+
+        if (this.type === 'water') {
+            // Water droplet
+            ctx.fillStyle = '#60a5fa';
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Shine
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+            ctx.beginPath();
+            ctx.arc(this.x - 2, this.y - 2, this.size * 0.3, 0, Math.PI * 2);
+            ctx.fill();
+        } else {
+            // Ion (Na+ or Cl-)
+            // Draw larger yellow circle background (User Request: Match numbers size)
+            ctx.fillStyle = '#fbbf24';
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, 22, 0, Math.PI * 2); // Radius 22px (Diameter 44px)
+            ctx.fill();
+
+            // Draw label
+            ctx.fillStyle = '#78350f'; // Dark brown text
+            ctx.font = 'bold 24px Inter, sans-serif'; // Font 24px
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+
+            if (this.label) {
+                ctx.fillText(this.label, this.x, this.y);
+            } else {
+                ctx.fillText('Na⁺', this.x, this.y + 1); // Slight offset for visual center
+            }
+        }
+
+        ctx.restore();
+    }
+}
+
+// ==================== FLUID PACKET SYSTEM ====================
+// Marker colors for tracking packets through cycles
+const MARKER_COLORS = [
+    '#ef4444', // red
+    '#f97316', // orange
+    '#eab308', // yellow
+    '#22c55e', // green
+    '#06b6d4', // cyan
+    '#3b82f6', // blue
+    '#8b5cf6', // violet
+    '#ec4899', // pink
+    '#f43f5e', // rose
+    '#14b8a6', // teal
+];
+
+// Global serial counter - each new packet gets the next number
+let packetSerialCounter = 1;
+
+class FluidPacket {
+    constructor(segmentIndex, limb, osmolarity, serialNumber = null) {
+        this.segmentIndex = segmentIndex;  // 0-5 for which segment
+        this.limb = limb;  // 'descending' or 'ascending'
+        this.osmolarity = osmolarity;
+
+        // Serial number - unique identifier that stays with the packet
+        if (serialNumber !== null) {
+            this.serialNumber = serialNumber;
+        } else {
+            // New packet gets next serial number
+            this.serialNumber = packetSerialCounter++;
+        }
+
+        // Visual properties - use serial number as marker
+        this.color = MARKER_COLORS[(this.serialNumber - 1) % MARKER_COLORS.length];
+        this.marker = this.serialNumber.toString();
+        this.size = 18;
+
+        // Animation
+        this.animProgress = 0;
+        this.prevX = 0;
+        this.prevY = 0;
+        this.targetX = 0;
+        this.targetY = 0;
+        this.currentX = 0;
+        this.currentY = 0;
+
+        // Initialize position
+        this.updateTargetPosition();
+        this.currentX = this.targetX;
+        this.currentY = this.targetY;
+    }
+
+    // Calculate flow number: 1-6 ascending (top to bottom), 7-12 descending (bottom to top)
+    // This tracks fluid age: oldest at top of ascending (1), newest at top of descending (12)
+    calculateFlowNumber() {
+        if (this.limb === 'ascending') {
+            // Ascending: top (index 0) = 1, bottom (index 5) = 6
+            return this.segmentIndex + 1;
+        } else {
+            // Descending: bottom (index 5) = 7, top (index 0) = 12
+            return CONFIG.numSegments + (CONFIG.numSegments - this.segmentIndex);
+        }
+    }
+
+    updateTargetPosition() {
+        this.prevX = this.targetX;
+        this.prevY = this.targetY;
+
+        const segmentHeight = Layout.getSegmentHeight();
+
+        if (this.limb === 'descending') {
+            this.targetX = Layout.getDescendingX() + Layout.limbWidth / 2;
+            this.targetY = Layout.getSegmentY(this.segmentIndex) + segmentHeight / 2;
+        } else if (this.limb === 'ascending') {
+            this.targetX = Layout.getAscendingX() + Layout.limbWidth / 2;
+            this.targetY = Layout.getSegmentY(this.segmentIndex) + segmentHeight / 2;
+        }
+
+        // If first position, set current to target
+        if (this.prevX === 0 && this.prevY === 0) {
+            this.prevX = this.targetX;
+            this.prevY = this.targetY;
+            this.currentX = this.targetX;
+            this.currentY = this.targetY;
+        }
+
+        this.animProgress = 0;
+    }
+
+    updateAnimation(progress) {
+        this.animProgress = Math.min(1, progress);
+
+        // Ease in-out cubic
+        const t = this.animProgress < 0.5
+            ? 4 * this.animProgress * this.animProgress * this.animProgress
+            : 1 - Math.pow(-2 * this.animProgress + 2, 3) / 2;
+
+        // Check if this is the hairpin turn (horizontal movement at bottom)
+        const isHairpin = Math.abs(this.prevY - this.targetY) < 1 && Math.abs(this.prevX - this.targetX) > 50;
+
+        if (isHairpin) {
+            // U-turn curve
+            // Control point is continuously below the segments to form a U
+            const centerX = (this.prevX + this.targetX) / 2;
+            const bottomY = Layout.getHairpinY() + 40; // Dip down below the segments
+
+            // Quadratic Bezier: (1-t)^2 * P0 + 2(1-t)t * P1 + t^2 * P2
+            this.currentX = (1 - t) * (1 - t) * this.prevX + 2 * (1 - t) * t * centerX + t * t * this.targetX;
+            this.currentY = (1 - t) * (1 - t) * this.prevY + 2 * (1 - t) * t * bottomY + t * t * this.targetY;
+        } else {
+            // Standard linear interpolation
+            this.currentX = this.prevX + (this.targetX - this.prevX) * t;
+            this.currentY = this.prevY + (this.targetY - this.prevY) * t;
+        }
+    }
+
+    // Move packet forward in the loop
+    advancePosition() {
+        if (this.limb === 'descending') {
+            if (this.segmentIndex >= CONFIG.numSegments - 1) {
+                // At bottom of descending - go directly to bottom of ascending
+                this.limb = 'ascending';
+                this.segmentIndex = CONFIG.numSegments - 1;
+            } else {
+                // Move down
+                this.segmentIndex++;
+            }
+        } else if (this.limb === 'ascending') {
+            if (this.segmentIndex <= 0) {
+                // Exit the loop - packet is removed
+                return false;
+            } else {
+                // Move up
+                this.segmentIndex--;
+            }
+        }
+
+        this.updateTargetPosition();
+        return true;
+    }
+
+    draw(ctx) {
+        ctx.save();
+
+        // Get segment dimensions for packet sizing
+        const segmentHeight = Layout.getSegmentHeight();
+        // Make packets bigger (User Request)
+        const packetWidth = Layout.limbWidth - 4; // Was -8
+        const packetHeight = segmentHeight - 4;   // Was -8
+
+        // Calculate packet position (centered in current animation position)
+        const packetX = this.currentX - packetWidth / 2;
+        const packetY = this.currentY - packetHeight / 2;
+
+        // Draw the water packet (solid colored rectangle)
+        ctx.globalAlpha = 0.85;
+        ctx.fillStyle = this.color;
+
+        // Safe rounded rect drawing (compatible with older browsers)
+        this.drawRoundedRect(ctx, packetX, packetY, packetWidth, packetHeight, 4);
+
+        ctx.fill();
+
+        // Serial number badge in top-left corner
+        ctx.globalAlpha = 1;
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+        ctx.beginPath();
+        ctx.arc(packetX + 15, packetY + 15, 12, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = 'white';
+        ctx.font = 'bold 11px Inter, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(this.marker, packetX + 15, packetY + 15);
+
+        // Osmolarity value in center of packet
+        ctx.fillStyle = 'white';
+        ctx.font = 'bold 24px Inter, sans-serif'; // Increased from 14px
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(Math.round(this.osmolarity).toString(),
+            packetX + packetWidth / 2,
+            packetY + packetHeight / 2);
+
+        ctx.restore();
+    }
+
+    // Helper for safe rounded rects
+    drawRoundedRect(ctx, x, y, width, height, radius) {
+        if (ctx.roundRect) {
+            ctx.beginPath();
+            ctx.roundRect(x, y, width, height, radius);
+            return;
+        }
+        ctx.beginPath();
+        ctx.moveTo(x + radius, y);
+        ctx.lineTo(x + width - radius, y);
+        ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+        ctx.quadraticCurveCurveTo(x, y, x + radius, y);
+        ctx.closePath();
+    }
+
+    clone() {
+        return new FluidPacket(this.segmentIndex, this.limb, this.osmolarity, this.serialNumber);
+    }
+}
+
+
+
+// ==================== LAYOUT CALCULATIONS ====================
+const Layout = {
+    canvas: null,
+    ctx: null,
+    graphCanvas: null,
+    graphCtx: null,
+
+    margin: { top: 60, bottom: 20, left: 10, right: 10 }, // Tight margins
+    limbWidth: 130,       // 130 * 3 + 20 gap = 410 (Fits in 450)
+    interstitiumWidth: 130,
+    columnGap: 10,
+
+    // Derived getters
+    getSegmentHeight() {
+        const usableHeight = CONFIG.canvasHeight - this.margin.top - this.margin.bottom;
+        return usableHeight / CONFIG.numSegments;
+    },
+
+    getDescendingX() {
+        return this.margin.left;
+    },
+
+    getInterstitiumX() {
+        return this.getDescendingX() + this.limbWidth + this.columnGap;
+    },
+
+    getAscendingX() {
+        return this.getInterstitiumX() + this.interstitiumWidth + this.columnGap;
+    },
+
+    // For compatibility with old logic if needed, but we will use specific X getters
+    getInterstitiumCenterX() {
+        return this.getInterstitiumX() + this.interstitiumWidth / 2;
+    },
+
+    getSegmentY(index) {
+        return this.margin.top + index * this.getSegmentHeight();
+    },
+
+    getHairpinY() {
+        return this.margin.top + CONFIG.numSegments * this.getSegmentHeight() + 10;
+    }
+};
+
+// ==================== RENDERING ====================
+class Renderer {
+    constructor(canvas) {
+        this.canvas = canvas;
+        this.ctx = canvas.getContext('2d');
+        this.canvas.width = CONFIG.canvasWidth;
+        this.canvas.height = CONFIG.canvasHeight;
+    }
+
+    clear() {
+        // Dark gradient background
+        const gradient = this.ctx.createLinearGradient(0, 0, 0, CONFIG.canvasHeight);
+        gradient.addColorStop(0, '#1e293b');
+        gradient.addColorStop(1, '#0f172a');
+        this.ctx.fillStyle = gradient;
+        this.ctx.fillRect(0, 0, CONFIG.canvasWidth, CONFIG.canvasHeight);
+    }
+
+    // Get color based on osmolarity
+    getOsmolarityColor(osm) {
+        const normalized = (osm - CONFIG.minOsmolarity) / (CONFIG.maxOsmolarity - CONFIG.minOsmolarity);
+        const clamped = Math.max(0, Math.min(1, normalized));
+
+        // Blue (dilute) -> Yellow -> Orange (concentrated)
+        if (clamped < 0.5) {
+            // Blue to Yellow
+            const t = clamped * 2;
+            const r = Math.round(96 + (251 - 96) * t);
+            const g = Math.round(165 + (191 - 165) * t);
+            const b = Math.round(250 + (36 - 250) * t);
+            return `rgb(${r}, ${g}, ${b})`;
+        } else {
+            // Yellow to Orange
+            const t = (clamped - 0.5) * 2;
+            const r = Math.round(251 + (234 - 251) * t);
+            const g = Math.round(191 + (88 - 191) * t);
+            const b = Math.round(36 + (12 - 36) * t);
+            return `rgb(${r}, ${g}, ${b})`;
+        }
+    }
+
+    drawLabels() {
+        const ctx = this.ctx;
+        ctx.save();
+
+        // Title labels
+        ctx.font = 'bold 14px Inter, sans-serif';
+        ctx.textAlign = 'center';
+
+        // Descending limb label
+        ctx.fillStyle = '#60a5fa';
+        ctx.fillText('DESCENDING', Layout.getDescendingX() + Layout.limbWidth / 2, Layout.margin.top - 25);
+        ctx.font = '11px Inter, sans-serif';
+        ctx.fillStyle = '#94a3b8';
+        ctx.fillText('(H₂O permeable)', Layout.getDescendingX() + Layout.limbWidth / 2, Layout.margin.top - 10);
+
+        // Ascending limb label
+        ctx.font = 'bold 14px Inter, sans-serif';
+        ctx.fillStyle = '#4ade80';
+        ctx.fillText('ASCENDING', Layout.getAscendingX() + Layout.limbWidth / 2, Layout.margin.top - 25);
+        ctx.font = '11px Inter, sans-serif';
+        ctx.fillStyle = '#94a3b8';
+        ctx.fillText('(Pumps NaCl)', Layout.getAscendingX() + Layout.limbWidth / 2, Layout.margin.top - 10);
+
+        // Interstitium label
+        ctx.font = 'bold 14px Inter, sans-serif';
+        ctx.fillStyle = '#fbbf24';
+        ctx.fillText('INTERSTITIUM', Layout.getInterstitiumCenterX(), Layout.margin.top - 25);
+
+        // Cortex/Medulla labels
+        ctx.font = '12px Inter, sans-serif';
+        ctx.textAlign = 'right';
+        ctx.fillStyle = '#64748b';
+        ctx.fillText('CORTEX', Layout.margin.left - 10, Layout.margin.top + 20);
+        ctx.fillText('OUTER MEDULLA', Layout.margin.left - 10, Layout.getSegmentY(2) + 20);
+        ctx.fillText('INNER MEDULLA', Layout.margin.left - 10, Layout.getSegmentY(4) + 20);
+
+        // Flow direction arrows
+        this.drawFlowArrows();
+
+        ctx.restore();
+    }
+
+    drawFlowArrows() {
+        const ctx = this.ctx;
+        ctx.save();
+        ctx.strokeStyle = '#475569';
+        ctx.lineWidth = 2;
+        ctx.setLineDash([5, 5]);
+
+        // Arrow down on descending
+        const descX = Layout.getDescendingX() - 20;
+        ctx.beginPath();
+        ctx.moveTo(descX, Layout.margin.top + 20);
+        ctx.lineTo(descX, Layout.getHairpinY() - 30);
+        ctx.stroke();
+
+        // Arrow head
+        ctx.setLineDash([]);
+        ctx.beginPath();
+        ctx.moveTo(descX - 6, Layout.getHairpinY() - 40);
+        ctx.lineTo(descX, Layout.getHairpinY() - 30);
+        ctx.lineTo(descX + 6, Layout.getHairpinY() - 40);
+        ctx.stroke();
+
+        // Arrow up on ascending
+        const ascX = Layout.getAscendingX() + Layout.limbWidth + 20;
+        ctx.setLineDash([5, 5]);
+        ctx.beginPath();
+        ctx.moveTo(ascX, Layout.getHairpinY() - 30);
+        ctx.lineTo(ascX, Layout.margin.top + 30);
+        ctx.stroke();
+
+        // Arrow head
+        ctx.setLineDash([]);
+        ctx.beginPath();
+        ctx.moveTo(ascX - 6, Layout.margin.top + 40);
+        ctx.lineTo(ascX, Layout.margin.top + 30);
+        ctx.lineTo(ascX + 6, Layout.margin.top + 40);
+        ctx.stroke();
+
+        ctx.restore();
+    }
+
+    drawTubules() {
+        const ctx = this.ctx;
+        const segmentHeight = Layout.getSegmentHeight();
+
+        // Animation Offset for Interstitium (Washout Flow)
+        let interstitiumOffsetY = 0;
+        let drawEnteringBlock = false;
+
+        if (CONFIG.enableWashout && State.currentStep === 'FLOW' && CONFIG.currentWashoutSets > 0) {
+            // Use flowProgress (0 to 1) to animate sliding down
+            // Scales with number of sets this cycle
+            interstitiumOffsetY = State.flowProgress * segmentHeight * CONFIG.currentWashoutSets;
+            drawEnteringBlock = true;
+        }
+
+        // Draw segments
+        // Draw segments
+        for (let i = 0; i < CONFIG.numSegments; i++) {
+            const y = Layout.getSegmentY(i);
+
+            // Descending & Ascending (No vertical slide animation for limbs in this model)
+            this.drawSegment(Layout.getDescendingX(), y, Layout.limbWidth, segmentHeight, State.descending[i], 'descending');
+            this.drawSegment(Layout.getAscendingX(), y, Layout.limbWidth, segmentHeight, State.ascending[i], 'ascending');
+
+            // Interstitium (Slides down if washout enabled)
+            const interY = y + interstitiumOffsetY;
+
+            // Only draw if within bounds (simple clipping)
+            if (interY < Layout.getSegmentY(CONFIG.numSegments)) {
+                this.drawInterstitiumValue(i, interY, segmentHeight);
+            }
+        }
+
+        // Draw Entering Block (Fresh 300 mOsm) at top if animating
+        if (drawEnteringBlock) {
+            const count = CONFIG.currentWashoutSets;
+            for (let k = 0; k < count; k++) {
+                // Stack blocks above the first segment
+                // Block k=0 is at -1 height. Block k=1 is at -2 height.
+                const y = Layout.margin.top + interstitiumOffsetY - ((k + 1) * segmentHeight);
+                this.drawInterstitiumValue(null, y, segmentHeight, CONFIG.plasmaOsm);
+            }
+        }
+
+        // Draw hairpin turn
+        this.drawHairpin();
+
+        // Draw pump symbols
+        this.drawPumpSymbols();
+    }
+
+    drawSegment(x, y, width, height, osmolarity, type) {
+        const ctx = this.ctx;
+        ctx.save();
+
+        const padding = 3;
+        const innerX = x + padding;
+        const innerY = y + padding;
+        const innerWidth = width - padding * 2;
+        const innerHeight = height - padding * 2 - 2;
+        const radius = 4;
+
+        // 1. Draw STATIC SLOT frame (empty border)
+        ctx.beginPath();
+        ctx.roundRect(x, y + 1, width, height - 2, radius);
+        const slotBorderColor = type === 'descending'
+            ? 'rgba(96, 165, 250, 0.4)'
+            : 'rgba(74, 222, 128, 0.4)';
+        ctx.strokeStyle = slotBorderColor;
+        ctx.lineWidth = 2;
+        ctx.setLineDash([4, 2]);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        // 2. Draw WATER PACKET (colored square that fills the slot)
+        const boxWidth = width; // Use full width
+        const boxHeight = height; // Use full height
+        const boxX = x;
+        const boxY = y;
+
+        // Box background
+        ctx.fillStyle = this.getOsmolarityColor(osmolarity);
+
+        // Safe rounded rect
+        if (ctx.roundRect) {
+            ctx.beginPath();
+            ctx.roundRect(boxX, boxY, boxWidth, boxHeight, radius);
+        } else {
+            // Fallback
+            ctx.beginPath();
+            ctx.rect(boxX, boxY, boxWidth, boxHeight);
+        }
+        ctx.fill();
+
+        // Border
+        const packetBorderColor = type === 'descending'
+            ? 'rgba(96, 165, 250, 0.8)'
+            : 'rgba(74, 222, 128, 0.8)';
+        ctx.strokeStyle = packetBorderColor;
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        // Osmolarity value in center
+        ctx.fillStyle = osmolarity > 600 ? '#1e293b' : '#f1f5f9';
+        ctx.font = 'bold 13px Inter, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(Math.round(osmolarity).toString(), x + width / 2, y + height / 2);
+
+        ctx.restore();
+    }
+
+    drawInterstitiumValue(index, y, height, explicitValue = null) {
+        const ctx = this.ctx;
+        const centerX = Layout.getInterstitiumCenterX();
+
+        // Use explicit value if provided (for entering block), otherwise get from State
+        let osm;
+        if (explicitValue !== null) {
+            osm = explicitValue;
+        } else {
+            // Safety check for index
+            if (index < 0 || index >= State.interstitium.length) return;
+            osm = State.interstitium[index];
+        }
+
+        ctx.save();
+
+        // Color-coded interstitium square based on osmolarity
+        // Use full column width minus padding (similar to FluidPacket)
+        const boxWidth = Layout.interstitiumWidth - 4;
+        const boxHeight = height - 4; // Matches FluidPacket height logic
+        const boxX = centerX - boxWidth / 2;
+        const boxY = y + 2; // Centered vertically in segment
+
+        // Get osmolarity-based color
+        const fillColor = this.getOsmolarityColor(osm);
+
+        // Draw colored box
+        ctx.beginPath();
+        ctx.roundRect(boxX, boxY, boxWidth, boxHeight, 6);
+        ctx.fillStyle = fillColor;
+        ctx.globalAlpha = 0.7;
+        // Clip to canvas area (simple way: don't draw if largely offscreen? 
+        // Canvas clips automatically, so fine).
+        ctx.fill();
+
+        // Border
+        ctx.globalAlpha = 1;
+        ctx.strokeStyle = 'rgba(251, 191, 36, 0.8)';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        // Value text
+        ctx.fillStyle = osm > 600 ? '#1e293b' : '#f1f5f9';
+        // Value text
+        ctx.fillStyle = osm > 600 ? '#1e293b' : '#f1f5f9';
+        // Match the 24px size of the limb packets
+        ctx.font = `bold 24px Inter, sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(Math.round(osm).toString(), centerX, y + height / 2);
+
+        // Draw small downward arrow if Washout is active (for visual flow confirmation)
+        if (CONFIG.enableWashout && State.currentStep === 'FLOW') {
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+            ctx.font = '10px Inter';
+            ctx.fillText('↓', centerX + 20, y + height / 2);
+        }
+
+        ctx.restore();
+    }
+
+    drawHairpin() {
+        const ctx = this.ctx;
+        const descX = Layout.getDescendingX() + Layout.limbWidth / 2;
+        const ascX = Layout.getAscendingX() + Layout.limbWidth / 2;
+        const bottomY = Layout.getHairpinY();
+
+        ctx.save();
+
+        // Hairpin curve
+        ctx.beginPath();
+        ctx.moveTo(descX, bottomY - 20);
+        ctx.quadraticCurveTo(descX, bottomY + 10, (descX + ascX) / 2, bottomY + 10);
+        ctx.quadraticCurveTo(ascX, bottomY + 10, ascX, bottomY - 20);
+
+        ctx.strokeStyle = 'rgba(148, 163, 184, 0.6)';
+        ctx.lineWidth = Layout.limbWidth - 10;
+        ctx.lineCap = 'round';
+        ctx.stroke();
+
+        // Hairpin turn label
+        ctx.font = '11px Inter, sans-serif';
+        ctx.fillStyle = '#64748b';
+        ctx.textAlign = 'center';
+        ctx.fillText('Hairpin Turn', (descX + ascX) / 2, bottomY + 30);
+
+        ctx.restore();
+    }
+
+    drawPumpSymbols() {
+        const ctx = this.ctx;
+        const segmentHeight = Layout.getSegmentHeight();
+
+        ctx.save();
+
+        // Only show pumps on active segments defined by config
+        for (const i of CONFIG.activePumpSegments) {
+            const y = Layout.getSegmentY(i) + segmentHeight / 2;
+            const x = Layout.getAscendingX() + Layout.limbWidth + 10;
+
+            // Pump symbol - active during PUMP step
+            const isActive = State.currentStep === 'PUMP';
+
+            // Tapered visual: Top pumps are smaller to show "struggling" against gradient
+            const sizeScale = (i < 3) ? 0.7 : 1.0;
+            const scale = (isActive ? 1 + 0.2 * Math.sin(Date.now() / 100) : 1) * sizeScale;
+
+            ctx.font = `${14 * scale}px Inter, sans-serif`;
+            ctx.fillStyle = isActive ? '#22c55e' : '#4ade80';
+            ctx.textAlign = 'left';
+            ctx.fillText('⚡', x, y);
+        }
+
+        ctx.restore();
+    }
+
+    drawParticles() {
+        for (const particle of State.particles) {
+            particle.draw(this.ctx);
+        }
+    }
+
+    drawStepIndicator() {
+        const ctx = this.ctx;
+        const steps = ['INITIAL', 'PUMP', 'EQUILIBRATE', 'FLOW'];
+
+        // Position to the right of the ascending limb
+        const startX = Layout.getAscendingX() + Layout.limbWidth + 60;
+        const startY = Layout.getSegmentY(0);
+        const stepHeight = 70;
+
+        ctx.save();
+
+        for (let i = 0; i < steps.length; i++) {
+            const x = startX;
+            const y = startY + i * stepHeight;
+            const isActive = State.currentStep === steps[i];
+
+            // Connector line (vertical)
+            if (i < steps.length - 1) {
+                ctx.beginPath();
+                ctx.moveTo(x + 15, y + 15); // Bottom of circle
+                ctx.lineTo(x + 15, y + stepHeight - 15); // Top of next circle
+                ctx.strokeStyle = 'rgba(71, 85, 105, 0.4)';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+            }
+
+            // Step circle
+            ctx.beginPath();
+            ctx.arc(x + 15, y, 14, 0, Math.PI * 2);
+            ctx.fillStyle = isActive ? '#3b82f6' : 'rgba(71, 85, 105, 0.5)';
+            ctx.fill();
+
+            // Outer glow for active step
+            if (isActive) {
+                ctx.strokeStyle = '#3b82f6';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+
+                ctx.beginPath();
+                ctx.arc(x + 15, y, 18, 0, Math.PI * 2);
+                ctx.strokeStyle = 'rgba(59, 130, 246, 0.3)';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+            }
+
+            // Step number
+            ctx.fillStyle = '#f1f5f9';
+            ctx.font = 'bold 12px Inter, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText((i).toString(), x + 15, y);
+
+            // Step name
+            ctx.fillStyle = isActive ? '#f1f5f9' : '#64748b';
+            ctx.font = isActive ? 'bold 14px Inter, sans-serif' : '14px Inter, sans-serif';
+            ctx.textAlign = 'left';
+            ctx.fillText(steps[i], x + 40, y);
+        }
+
+        ctx.restore();
+    }
+
+    drawFluidPackets() {
+        for (const packet of State.fluidPackets) {
+            packet.draw(this.ctx);
+        }
+    }
+
+    render() {
+        this.clear();
+        this.drawLabels();
+        this.drawTubules();
+        this.drawParticles();
+        this.drawFluidPackets();
+        this.drawStepIndicator();
+    }
+}
+
+// ==================== SIMULATION LOGIC ====================
+function saveState() {
+    State.history.push({
+        descending: [...State.descending],
+        ascending: [...State.ascending],
+        interstitium: [...State.interstitium],
+        currentStep: State.currentStep,
+        cycleCount: State.cycleCount,
+        stepIndex: State.stepIndex,
+        // Deep clone packets to preserve exact state (serial numbers, etc.)
+        fluidPackets: State.fluidPackets.map(p => p.clone()),
+        // Deep clone graph data
+        graphData: JSON.parse(JSON.stringify(State.graphData))
+    });
+
+    // Limit history size
+    if (State.history.length > 50) {
+        State.history.shift();
+    }
+}
+
+function restoreState() {
+    if (State.history.length === 0) return false;
+
+    const prev = State.history.pop();
+    State.descending = prev.descending;
+    State.ascending = prev.ascending;
+    State.interstitium = prev.interstitium;
+    State.currentStep = prev.currentStep;
+    State.cycleCount = prev.cycleCount;
+    State.stepIndex = prev.stepIndex;
+
+    // Restore exact packet state from snapshot
+    State.fluidPackets = prev.fluidPackets;
+
+    // Restore exact graph data
+    State.graphData = prev.graphData;
+
+    State.flowAnimating = false;
+    State.flowProgress = 0;
+
+    // Reset loop max gradient marker if we went back before it happened
+    if (State.maxGradientCycle !== null && State.maxGradientCycle > State.cycleCount) {
+        State.maxGradientCycle = null;
+        const statEl = document.getElementById('maxGradientStat');
+        if (statEl) statEl.textContent = '';
+    }
+
+    // Force UI updates
+    updateGraph();
+
+    // Re-check target positions for packets (in case of visual drift or if created fresh)
+    for (const packet of State.fluidPackets) {
+        packet.updateTargetPosition();
+        packet.currentX = packet.targetX;
+        packet.currentY = packet.targetY;
+    }
+
+    return true;
+}
+
+function performPumpStep() {
+    // The "Single Effect" - ascending limb pumps NaCl into interstitium
+    // This creates a gradient defined by CONFIG.pumpGradient (max 200 mOsm normally)
+
+    // Base capacity for active pumps in thick ascending limb
+    // Scaled by Pump Strength slider (50% - 150%)
+    const strengthMultiplier = CONFIG.pumpStrength / 100;
+    const basePumpCapacity = 100 * strengthMultiplier;
+    const medullaryThreshold = Math.floor(CONFIG.numSegments / 2); // Split between Top (Tapered) and Bottom (Strong)
+
+    for (let i = 0; i < CONFIG.numSegments; i++) {
+        // Zonal Pumping check - if segment not active at all, skip
+        if (!CONFIG.activePumpSegments.includes(i)) continue;
+
+        // Physiological Tapering Logic for Top Segments
+        // Rate declines as substrate (Na+) is depleted and gradient opposes
+        // Bottom segments pump at full power
+        let pumpCapacity = basePumpCapacity;
+
+        if (i < medullaryThreshold) { // Top segments (Cortex/Outer Medulla)
+            // Efficiency depends on substrate concentration relative to plasma (300)
+            // As fluid gets dilute (e.g. 100), efficiency drops to ~33%
+            const substrateFactor = State.ascending[i] / 300;
+            pumpCapacity = basePumpCapacity * substrateFactor;
+        }
+
+        // Calculate current gradient
+        const currentGradient = State.interstitium[i] - State.ascending[i];
+        const maxGradient = CONFIG.pumpGradient;
+
+        // Calculate how much we CAN pump without exceeding max gradient
+        // Each unit pumped increases gradient by 2 (Asc -1, Int +1)
+        // Wanted change = maxGradient - currentGradient
+        // Pump amount = (maxGradient - currentGradient) / 2
+
+        let allowedPump = (maxGradient - currentGradient) / 2;
+        allowedPump = Math.max(0, allowedPump); // Can't pump negative
+
+        // User Request: "Make sure bottom 3 segments can pump until gradient is 200"
+        // For bottom segments (Deep Medulla), we relax the fixed capacity limit and pump purely based on gradient target.
+        let effectiveCapacity = pumpCapacity;
+        if (i >= medullaryThreshold) {
+            // Calculate amount needed to widen gap to CONFIG.pumpGradient
+            let currentGap = State.interstitium[i] - State.ascending[i];
+            let gapDeficit = CONFIG.pumpGradient - currentGap;
+            if (gapDeficit > 0) {
+                effectiveCapacity = gapDeficit / 2;
+                // Add a small buffer to ensure we hit/exceed target slightly or handle rounding
+                effectiveCapacity = Math.max(effectiveCapacity, 0);
+            } else {
+                effectiveCapacity = 0; // Already met limit
+            }
+            // Ensure we don't pump negative
+            effectiveCapacity = Math.max(0, effectiveCapacity);
+        }
+
+        // Amount we CAN pump based on gradient limit (standard logic)
+        // Note: The logic above calculates exact needs. Standard logic effectively limits to "Reach Limit".
+        // We combine them:
+        // For bottom segments, effectiveCapacity IS the allowedPump amount derived from gradient.
+        // For top segments, it's constrained by the fixed 100 limit (basePumpCapacity).
+
+        // To be safe and compatible with existing structure:
+        let potentialGradientPump = (CONFIG.pumpGradient - (State.interstitium[i] - State.ascending[i])) / 2;
+        potentialGradientPump = Math.max(0, potentialGradientPump);
+
+        let maxPump = (i >= medullaryThreshold) ? (500 * strengthMultiplier) : pumpCapacity;
+
+        // Also limited by available solute in ascending limb (min 100 mOsm)
+        const availableSolute = Math.max(0, State.ascending[i] - 100);
+
+        // Actual amount to pump is minimum of capacity, allowed by gradient, and available solute
+        const pumped = Math.min(maxPump, potentialGradientPump, availableSolute);
+
+        // Store for particle label
+        State.lastPumpAmounts[i] = Math.round(pumped);
+
+        if (pumped > 0) {
+            // Reduce ascending osmolarity (becomes dilute)
+            State.ascending[i] -= pumped;
+
+            // Increase interstitium osmolarity (becomes hypertonic)
+            State.interstitium[i] = Math.min(CONFIG.maxOsmolarity, State.interstitium[i] + pumped);
+        }
+    }
+
+    // Spawn ion particles
+    spawnPumpParticles();
+
+    // Sync packet osmolarity values with state
+    syncPacketOsmolarity();
+}
+
+// Sync packet osmolarity values with the current state arrays
+function syncPacketOsmolarity() {
+    for (const packet of State.fluidPackets) {
+        if (packet.limb === 'descending') {
+            packet.osmolarity = State.descending[packet.segmentIndex];
+        } else if (packet.limb === 'ascending') {
+            packet.osmolarity = State.ascending[packet.segmentIndex];
+        }
+    }
+}
+
+function performEquilibrateStep() {
+    // Descending limb equilibrates with interstitium (water leaves)
+    for (let i = 0; i < CONFIG.numSegments; i++) {
+        // Gradually equilibrate - descending matches interstitium
+        State.descending[i] = State.interstitium[i];
+    }
+
+    // Spawn water particles
+    spawnWaterParticles();
+
+    // Sync packet osmolarity values with state
+    syncPacketOsmolarity();
+}
+
+function performFlowStep() {
+    // Calculate the PENDING new osmolarity values (to be applied after animation)
+    const pendingDescending = [...State.descending];
+    const pendingAscending = [...State.ascending];
+
+    // Save bottom value before it's overwritten
+    const bottomDescending = pendingDescending[CONFIG.numSegments - 1];
+
+    // Shift descending DOWN (new fluid enters at top)
+    for (let i = CONFIG.numSegments - 1; i > 0; i--) {
+        pendingDescending[i] = pendingDescending[i - 1];
+    }
+    pendingDescending[0] = CONFIG.plasmaOsm; // New isosmotic fluid from PCT
+
+    // Shift ascending UP (fluid exits at top)
+    for (let i = 0; i < CONFIG.numSegments - 1; i++) {
+        pendingAscending[i] = pendingAscending[i + 1];
+    }
+    pendingAscending[CONFIG.numSegments - 1] = bottomDescending; // From hairpin
+
+    // Interstitium Flow Logic (Washout)
+    // Washout occurs if Sets > 0 AND (Cycle Count + 1) % Frequency == 0
+
+    let washoutSets = 0;
+
+    if (CONFIG.washoutSets > 0) {
+        // Check frequency
+        // Cycle counts start at 0. End of this step marks complete cycle.
+        const currentCycle = State.cycleCount + 1;
+        if (currentCycle % CONFIG.washoutFreq === 0) {
+            washoutSets = CONFIG.washoutSets;
+        }
+    }
+
+    // Store for Visualization in drawTubules
+    CONFIG.currentWashoutSets = washoutSets;
+    CONFIG.enableWashout = (CONFIG.washoutSets > 0); // Active if ANY sets configured, even if not this cycle
+
+    const pendingInterstitium = [...State.interstitium];
+
+    if (washoutSets > 0) {
+        for (let k = 0; k < washoutSets; k++) {
+            // Shift down
+            for (let i = CONFIG.numSegments - 1; i > 0; i--) {
+                pendingInterstitium[i] = pendingInterstitium[i - 1];
+            }
+            // Top gets plasma (300)
+            pendingInterstitium[0] = CONFIG.plasmaOsm;
+        }
+    }
+
+    // Store pending state - will be applied after animation completes
+    State.pendingFlowState = {
+        descending: pendingDescending,
+        ascending: pendingAscending,
+        interstitium: pendingInterstitium
+    };
+
+    // === FLUID PACKETS FLOW ===
+    // Advance all existing packets (removes ones that exit the loop)
+    State.fluidPackets = State.fluidPackets.filter(packet => packet.advancePosition());
+
+    // Spawn a new packet entering from PCT (top of descending)
+    const newPacket = new FluidPacket(0, 'descending', CONFIG.plasmaOsm);
+    State.fluidPackets.push(newPacket);
+
+    // Start flow animation (osmolarity updates when animation finishes)
+    State.flowAnimating = true;
+    State.flowProgress = 0;
+
+    // Record data at the START of the new cycle (technically state reflects end of prev cycle + new entry)
+    // Actually best to record at the END of flow when state is stable.
+    // Ideally calculate values now and store them.
+    recordGraphData();
+}
+
+function spawnPumpParticles() {
+    const segmentHeight = Layout.getSegmentHeight();
+
+    for (let i = 0; i < CONFIG.numSegments; i++) {
+        // Zonal Pumping check
+        if (!CONFIG.activePumpSegments.includes(i)) continue;
+
+        const amount = State.lastPumpAmounts[i];
+
+        // Only spawn if there was actually solute pumped
+        if (amount > 0) {
+            const y = Layout.getSegmentY(i) + segmentHeight / 2;
+            const startX = Layout.getAscendingX() + Layout.limbWidth / 2;
+            const targetX = Layout.getInterstitiumCenterX(); // Move to center of interstitium
+
+            // Spawn single distinct particle labeling the amount
+            State.particles.push(new Particle(
+                startX,
+                y,
+                'ion',
+                targetX,
+                y,
+                amount.toString() // Label with actual pumped amount
+            ));
+        }
+    }
+}
+
+function spawnWaterParticles() {
+    const segmentHeight = Layout.getSegmentHeight();
+
+    for (let i = 0; i < CONFIG.numSegments; i++) {
+        const y = Layout.getSegmentY(i) + segmentHeight / 2;
+        const startX = Layout.getDescendingX() + Layout.limbWidth / 2;
+        const targetX = Layout.getInterstitiumCenterX() - 40;
+
+        // Spawn water droplets
+        for (let j = 0; j < 2; j++) {
+            const offsetY = (Math.random() - 0.5) * 20;
+            State.particles.push(new Particle(
+                startX,
+                y + offsetY,
+                'water',
+                targetX,
+                y + offsetY
+            ));
+        }
+    }
+}
+
+function stepForward() {
+    saveState();
+
+    switch (State.currentStep) {
+        case 'INITIAL':
+            State.currentStep = 'PUMP';
+            State.stepIndex = 1;
+            performPumpStep();
+            break;
+
+        case 'PUMP':
+            State.currentStep = 'EQUILIBRATE';
+            State.stepIndex = 2;
+            performEquilibrateStep();
+            break;
+
+        case 'EQUILIBRATE':
+            // Logic moved to performFlowStep for smooth animation
+            State.currentStep = 'FLOW';
+            State.stepIndex = 3;
+            performFlowStep();
+            break;
+
+        case 'FLOW':
+            State.currentStep = 'PUMP';
+            State.stepIndex = 1;
+            State.cycleCount++;
+            performPumpStep();
+            break;
+    }
+
+    updateUI();
+}
+
+function stepBack() {
+    if (restoreState()) {
+        State.particles = []; // Clear particles
+        updateUI();
+    }
+}
+
+function reset() {
+    State.descending = new Array(CONFIG.numSegments).fill(CONFIG.plasmaOsm);
+    State.ascending = new Array(CONFIG.numSegments).fill(CONFIG.plasmaOsm);
+    State.interstitium = new Array(CONFIG.numSegments).fill(CONFIG.plasmaOsm);
+    State.currentStep = 'INITIAL';
+    State.cycleCount = 0;
+    State.stepIndex = 0;
+    State.particles = [];
+    State.flowAnimating = false;
+    State.flowProgress = 0;
+    State.history = [];
+    State.isPlaying = false;
+    State.graphData = [];
+    State.maxGradientCycle = null;
+
+    // Reinitialize packets at all positions
+    initializePackets();
+
+    document.getElementById('btnAutoPlay').textContent = '▶ Auto Play';
+    document.getElementById('btnAutoPlay').classList.remove('playing');
+
+    updateUI();
+    updateGraph(); // Update graph on reset
+    const statEl = document.getElementById('maxGradientStat');
+    if (statEl) statEl.textContent = '';
+}
+
+function toggleAutoPlay() {
+    State.isPlaying = !State.isPlaying;
+
+    const btn = document.getElementById('btnAutoPlay');
+    if (State.isPlaying) {
+        btn.textContent = '⏸ Pause';
+        btn.classList.add('playing');
+    } else {
+        btn.textContent = '▶ Auto Play';
+        btn.classList.remove('playing');
+    }
+}
+
+function updateUI() {
+    // Update info panel
+    document.getElementById('cycleCount').textContent = State.cycleCount;
+    document.getElementById('stepName').textContent = STEP_INFO[State.currentStep].name;
+
+    // Max gradient (bottom interstitium)
+    const maxOsm = Math.round(Math.max(...State.interstitium));
+    document.getElementById('maxGradient').textContent = maxOsm + ' mOsm';
+
+    // Exit fluid (top of ascending)
+    const exitOsm = Math.round(State.ascending[0]);
+    document.getElementById('exitFluid').textContent = exitOsm + ' mOsm';
+
+    // Step description
+    document.getElementById('stepDescription').innerHTML = STEP_INFO[State.currentStep].description;
+}
+
+// ==================== ANIMATION LOOP ====================
+let renderer;
+let lastTime = 0;
+let autoPlayTimer = 0;
+
+function animate(timestamp) {
+    if (!lastTime) lastTime = timestamp;
+    const deltaTime = timestamp - lastTime;
+    lastTime = timestamp;
+
+    // Update particles
+    // Base speed scaled by Animation Speed (from duration) AND specific Particle Speed Modifier
+    const particleSpeed = 0.003 * State.animationSpeed * CONFIG.particleSpeedMod;
+    State.particles = State.particles.filter(p => p.update(particleSpeed * deltaTime));
+
+    // Update fluid packet flow animation
+    if (State.flowAnimating) {
+        const flowSpeed = 0.002 * State.animationSpeed;
+        State.flowProgress += flowSpeed * deltaTime;
+
+        // Update all packet animations
+        for (const packet of State.fluidPackets) {
+            packet.updateAnimation(State.flowProgress);
+        }
+
+        // End flow animation when complete
+        if (State.flowProgress >= 1) {
+            State.flowAnimating = false;
+            State.flowProgress = 0;
+
+            // Apply pending osmolarity changes now that packets reached their slots
+            if (State.pendingFlowState) {
+                State.descending = State.pendingFlowState.descending;
+                State.ascending = State.pendingFlowState.ascending;
+                State.interstitium = State.pendingFlowState.interstitium;
+                State.pendingFlowState = null;
+                updateUI();
+            }
+        }
+    }
+
+    // Auto-play logic
+    if (State.isPlaying && !State.flowAnimating) {
+        autoPlayTimer += deltaTime;
+        const interval = CONFIG.animationDuration;
+
+        if (autoPlayTimer >= interval) {
+            autoPlayTimer = 0;
+            stepForward();
+        }
+    }
+
+    // Render
+    renderer.render();
+
+    requestAnimationFrame(animate);
+}
+
+// ==================== INITIALIZATION ====================
+function initializePackets() {
+    // Create packets at each segment position from the start
+    State.fluidPackets = [];
+
+    // Assign serial numbers following flow order:
+    // 1-6: Ascending limb (top to bottom) - oldest fluid, about to exit
+    // 7-12: Descending limb (bottom to top) - newest fluid
+
+    // Ascending limb: serial 1 at top (index 0), serial 6 at bottom (index 5)
+    for (let i = 0; i < CONFIG.numSegments; i++) {
+        const serialNum = i + 1;  // 1, 2, 3, 4, 5, 6
+        const ascPacket = new FluidPacket(i, 'ascending', State.ascending[i], serialNum);
+        State.fluidPackets.push(ascPacket);
+    }
+
+    // Descending limb: serial 7 at bottom (index 5), serial 12 at top (index 0)
+    for (let i = CONFIG.numSegments - 1; i >= 0; i--) {
+        const serialNum = 7 + (CONFIG.numSegments - 1 - i);  // 7, 8, 9, 10, 11, 12
+        const descPacket = new FluidPacket(i, 'descending', State.descending[i], serialNum);
+        State.fluidPackets.push(descPacket);
+    }
+
+    // Next new packet will be #13
+    packetSerialCounter = 13;
+}
+
+function init() {
+    const canvas = document.getElementById('ccmCanvas');
+    renderer = new Renderer(canvas);
+
+    // Event listeners
+    document.getElementById('btnStepForward').addEventListener('click', stepForward);
+    document.getElementById('btnStepBack').addEventListener('click', stepBack);
+    document.getElementById('btnAutoPlay').addEventListener('click', toggleAutoPlay);
+    document.getElementById('btnReset').addEventListener('click', reset);
+
+    // Speed Slider Logic (Cycles per Second)
+    const speedSlider = document.getElementById('speedSlider');
+    const speedVal = document.getElementById('speedVal'); // Label
+
+    function updateSpeed(val) {
+        // Slider 1-100 mapped to 0.1 Hz to 4.0 Hz
+        // Val 1 = 0.1 Hz (10s), Val 50 = 1.0 Hz (1s), Val 100 = 4.0 Hz (0.25s)
+
+        let hz;
+        if (val <= 50) {
+            // 0.1 to 1.0
+            hz = 0.1 + (val / 50) * 0.9;
+        } else {
+            // 1.0 to 4.0
+            hz = 1.0 + ((val - 50) / 50) * 3.0;
+        }
+
+        const duration = 1000 / hz;
+
+        CONFIG.animationDuration = duration;
+        State.animationSpeed = hz; // Update internal reference
+
+        // Update Label
+        if (speedVal) {
+            speedVal.textContent = `${hz.toFixed(1)} /s`;
+        }
+    }
+
+    if (speedSlider) {
+        // Dropdown Logic
+        const speedMult = document.getElementById('speedMultiplier');
+        if (speedMult) {
+            speedMult.addEventListener('change', (e) => {
+                const multi = parseInt(e.target.value); // 1, 2, 3, 5, 10
+                const baseHz = 0.4; // 1x = 0.4 Hz (2.5s)
+                const targetHz = baseHz * multi;
+
+                // Reverse calculate slider value for visual sync
+                // Formula: 
+                // if Hz <= 1.0: val = (Hz - 0.1) / 0.9 * 50
+                // if Hz > 1.0: val = 50 + (Hz - 1.0) / 3.0 * 50
+                let sliderVal;
+                if (targetHz <= 1.0) {
+                    sliderVal = Math.round(((targetHz - 0.1) / 0.9) * 50);
+                } else {
+                    sliderVal = Math.round(50 + ((targetHz - 1.0) / 3.0) * 50);
+                }
+
+                speedSlider.value = sliderVal;
+                updateSpeed(sliderVal);
+            });
+        }
+
+        speedSlider.addEventListener('input', (e) => {
+            updateSpeed(e.target.value);
+            // Reset dropdown to "Custom" essentially (or keep seemingly as is)
+            if (speedMult) speedMult.value = ''; // Optional reset visual
+        });
+
+        // Default to Slow (0.4 Hz / 2.5s)
+        speedSlider.value = 17;
+        updateSpeed(17);
+    }
+
+    // Old Turbo logic removed (replaced by Hz slider)
+    // Pump Strength Slider
+    const pumpStrengthSlider = document.getElementById('pumpStrengthSlider');
+    if (pumpStrengthSlider) {
+        pumpStrengthSlider.addEventListener('input', (e) => {
+            const val = parseInt(e.target.value);
+            CONFIG.pumpStrength = val;
+            document.getElementById('pumpStrengthVal').textContent = val + '%';
+        });
+    }
+
+    // Washout Sets Slider
+    const washoutSetsSlider = document.getElementById('washoutSetsSlider');
+    const washoutFreqSlider = document.getElementById('washoutFreqSlider');
+    const washoutHelp = document.getElementById('washoutHelp');
+
+    function updateWashoutUI() {
+        const sets = CONFIG.washoutSets;
+        const freq = CONFIG.washoutFreq;
+
+        document.getElementById('washoutSetsVal').textContent = sets === 0 ? 'Off' : (sets + ' Set' + (sets > 1 ? 's' : ''));
+        document.getElementById('washoutFreqVal').textContent = freq === 1 ? 'Every Cycle' : `Every ${freq} Cycles`;
+
+        if (sets === 0) {
+            washoutHelp.textContent = "Washout disabled.";
+        } else {
+            washoutHelp.textContent = `Flush ${sets} block(s) of 300 mOsm every ${freq} cycle(s).`;
+        }
+    }
+
+    if (washoutSetsSlider) {
+        washoutSetsSlider.addEventListener('input', (e) => {
+            CONFIG.washoutSets = parseInt(e.target.value);
+            CONFIG.enableWashout = (CONFIG.washoutSets > 0);
+            updateWashoutUI();
+        });
+    }
+
+    if (washoutFreqSlider) {
+        washoutFreqSlider.addEventListener('input', (e) => {
+            CONFIG.washoutFreq = parseInt(e.target.value);
+            updateWashoutUI();
+        });
+    }
+
+    // Gradient Slider
+    const gradientSlider = document.getElementById('gradientSlider');
+    if (gradientSlider) {
+        gradientSlider.addEventListener('input', (e) => {
+            const val = parseInt(e.target.value);
+            CONFIG.pumpGradient = val;
+            document.getElementById('gradientValue').innerText = val;
+            updateExplanation();
+        });
+    }
+
+    // Particle Speed Slider
+    const particleSpeedSlider = document.getElementById('particleSpeedSlider');
+    if (particleSpeedSlider) {
+        particleSpeedSlider.addEventListener('input', (e) => {
+            const val = parseInt(e.target.value);
+            CONFIG.particleSpeedMod = val / 100; // 0.1 to 2.0
+            document.getElementById('particleSpeedVal').textContent = CONFIG.particleSpeedMod.toFixed(1) + 'x';
+        });
+    }
+
+    // Description Panel Toggle Logic
+    const descPanel = document.getElementById('descriptionPanel');
+    const btnToggleDesc = document.getElementById('btnToggleDesc');
+    const btnShowDesc = document.getElementById('btnShowDesc');
+
+    function toggleDescription(show) {
+        if (show) {
+            descPanel.classList.remove('collapsed');
+            if (btnShowDesc) btnShowDesc.style.display = 'none';
+        } else {
+            descPanel.classList.add('collapsed');
+            if (btnShowDesc) btnShowDesc.style.display = 'block';
+        }
+    }
+
+    if (btnToggleDesc) {
+        btnToggleDesc.addEventListener('click', () => toggleDescription(false));
+    }
+
+    if (btnShowDesc) {
+        btnShowDesc.addEventListener('click', () => toggleDescription(true));
+    }
+
+    // Initialize packets from the start
+    initializePackets();
+
+    // Initialize Graph Layout
+    Layout.graphCanvas = document.getElementById('graphCanvas');
+    if (Layout.graphCanvas) {
+        // Set resolution for sharp text
+        const dpr = window.devicePixelRatio || 1;
+        const rect = Layout.graphCanvas.getBoundingClientRect();
+        Layout.graphCanvas.width = rect.width * dpr;
+        Layout.graphCanvas.height = rect.height * dpr;
+        Layout.graphCtx = Layout.graphCanvas.getContext('2d');
+        Layout.graphCtx.scale(dpr, dpr);
+
+        // Initial Draw
+        updateGraph();
+    }
+
+    // Graph Control Listeners
+    document.getElementById('xAxisScale')?.addEventListener('input', (e) => {
+        document.getElementById('xAxisVal').textContent = e.target.value;
+        updateGraph();
+    });
+    document.getElementById('yAxisScale')?.addEventListener('input', (e) => {
+        // Magnification log (optional, or just update)
+        updateGraph();
+    });
+    document.getElementById('timeScaleSlider')?.addEventListener('input', (e) => {
+        const val = parseFloat(e.target.value);
+        document.getElementById('timeScaleVal').textContent = val.toFixed(1);
+        document.getElementById('timePerCycleVal').textContent = (1 / val).toFixed(2) + 's';
+        updateGraph();
+    });
+
+    // Initial UI update
+    updateUI();
+
+    // Force initial render to ensure canvas is not blank
+    if (renderer) renderer.render();
+
+    // Start animation loop
+    requestAnimationFrame(animate);
+
+    // Initial graph data point
+    recordGraphData();
+}
+
+// === GRAPHING LOGIC ===
+function recordGraphData() {
+    const deepOsm = State.interstitium[CONFIG.numSegments - 1]; // Deepest point
+    const outflowOsm = State.ascending[0]; // Top of ascending limb (leaving to DCT)
+
+    // Check if max gradient reached
+    // User requested instantaneous max gradient (Deep Medulla Osmolarity) which can oscillate.
+    const statEl = document.getElementById('maxGradientStat');
+    if (statEl) {
+        // Calculate gradient (Deepest - 300)
+        const currentGradient = deepOsm - 300;
+        statEl.innerHTML = `Current Deep Osmolarity: <span style="color: #ef4444; font-weight: bold;">${Math.round(deepOsm)} mOsm</span> (Gradient: ${Math.round(currentGradient)})`;
+    }
+
+    State.graphData.push({
+        cycle: State.cycleCount,
+        deepOsm: deepOsm,
+        outflowOsm: outflowOsm
+    });
+
+    updateGraph();
+}
+
+function updateGraph() {
+    const canvas = Layout.graphCanvas;
+    const ctx = Layout.graphCtx;
+    if (!canvas || !ctx) return;
+
+    // Parameters from sliders
+    const xScale = parseInt(document.getElementById('xAxisScale')?.value || 10); // Cycles per division
+    const magnification = parseFloat(document.getElementById('yAxisScale')?.value || 1.0); // Magnification 1x to 5x
+
+    const width = canvas.width / (window.devicePixelRatio || 1);
+    const height = canvas.height / (window.devicePixelRatio || 1);
+    const padding = { top: 20, bottom: 30, left: 40, right: 20 };
+
+    // Clear
+    ctx.clearRect(0, 0, width, height);
+
+    // Grid & Axes
+    ctx.strokeStyle = 'rgba(148, 163, 184, 0.2)';
+    ctx.lineWidth = 1;
+    ctx.font = '10px Inter';
+    ctx.fillStyle = '#94a3b8';
+    ctx.textAlign = 'right';
+
+    // Y-Axis Auto-Tracking Logic
+    const baseMaxOsm = 1400;
+    const viewHeight = baseMaxOsm / magnification;
+
+    // Determine center tracking target (Deep Medulla value)
+    let targetMid = 300; // Default center
+    if (State.graphData.length > 0) {
+        targetMid = State.graphData[State.graphData.length - 1].deepOsm;
+    }
+
+    // Calculate view bounds
+    let minOsm = targetMid - (viewHeight / 2);
+
+    // Clamping
+    if (minOsm < 0) minOsm = 0;
+    let maxOsm = minOsm + viewHeight;
+
+    if (maxOsm > baseMaxOsm) {
+        maxOsm = baseMaxOsm;
+        minOsm = maxOsm - viewHeight;
+    }
+    // Ensure minOsm is not negative (double check after max clamp)
+    if (minOsm < 0) minOsm = 0;
+
+    // Adaptive Grid Steps
+    const roughStep = viewHeight / 5;
+    let yStep = 50;
+    if (roughStep > 150) yStep = 200;
+    else if (roughStep > 80) yStep = 100;
+    else yStep = 50;
+
+    const yPixelsPerOsm = (height - padding.top - padding.bottom) / viewHeight;
+
+    // Draw Grid Lines
+    // Start from the first multiple of yStep >= minOsm
+    const firstGridY = Math.ceil(minOsm / yStep) * yStep;
+
+    for (let osm = firstGridY; osm <= maxOsm; osm += yStep) {
+        const y = height - padding.bottom - ((osm - minOsm) * yPixelsPerOsm);
+
+        ctx.beginPath();
+        ctx.moveTo(padding.left, y);
+        ctx.lineTo(width - padding.right, y);
+        ctx.stroke();
+
+        ctx.fillText(osm, padding.left - 5, y + 3);
+    }
+
+    // X-Axis (Cycles) - Auto-Scrolling Logic
+    const latestCycle = State.graphData.length > 0 ? State.graphData[State.graphData.length - 1].cycle : 0;
+
+    const xGridSpacing = 50; // pixels per division (visual spacing)
+    const cyclesPerDiv = xScale; // User selected cycles per div (logic spacing)
+    const pixelsPerCycle = xGridSpacing / cyclesPerDiv;
+
+    // Calculate visible range
+    const graphWidth = width - padding.left - padding.right;
+    const maxVisibleCycles = (graphWidth / pixelsPerCycle);
+
+    // Determine view window
+    let startCycle = 0;
+    if (latestCycle > maxVisibleCycles) {
+        // Auto-scroll: Keep latest cycle on the right
+        startCycle = latestCycle - maxVisibleCycles;
+    }
+
+    // Time Scale
+    const timeRate = parseFloat(document.getElementById('timeScaleSlider')?.value || 1.0); // Cycles per Second
+
+    ctx.textAlign = 'center';
+
+    // Draw Axis Labels and Grid
+    // We iterate to find grid lines within the visible window [startCycle, startCycle + maxVisibleCycles]
+    const firstGridIndex = Math.ceil(startCycle / cyclesPerDiv);
+    const lastGridIndex = Math.floor((startCycle + maxVisibleCycles) / cyclesPerDiv);
+
+    for (let i = firstGridIndex; i <= lastGridIndex; i++) {
+        const cycleValue = i * cyclesPerDiv;
+        // Calculate X position relative to startCycle
+        // x = padding.left + (cycleValue - startCycle) * pixelsPerCycle
+        const x = padding.left + (cycleValue - startCycle) * pixelsPerCycle;
+
+        if (x < padding.left - 1 || x > width - padding.right + 1) continue;
+
+        // Grid Line
+        ctx.beginPath();
+        ctx.moveTo(x, padding.top);
+        ctx.lineTo(x, height - padding.bottom);
+        ctx.stroke();
+
+        // Bottom Label (Cycles)
+        ctx.fillStyle = '#94a3b8';
+        ctx.fillText(cycleValue, x, height - padding.bottom + 12);
+
+        // Top Label (Time)
+        // Time = Cycle / Rate
+        const timeValue = (cycleValue / timeRate).toFixed(1);
+        ctx.fillStyle = '#10b981'; // Emerald/Green for Time
+        ctx.fillText(timeValue + 's', x, padding.top - 6);
+    }
+
+    // Axis Titles
+    ctx.textAlign = 'right';
+    ctx.fillStyle = '#94a3b8';
+    ctx.fillText('Cycles', width - 5, height - padding.bottom + 12);
+
+    ctx.fillStyle = '#10b981';
+    ctx.fillText('Time', width - 5, padding.top - 6);
+
+    // Plot Lines
+    function plotLine(color, dataKey) {
+        ctx.save();
+
+        // Define clipping region first
+        ctx.beginPath();
+        ctx.rect(padding.left, padding.top, graphWidth, height - padding.top - padding.bottom);
+        ctx.clip();
+
+        // Now draw the line
+        ctx.beginPath();
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 2;
+
+        // Optimization: Only plot points roughly within view or connected to view
+        let started = false;
+
+        // Use standard for loop to allow breaking (performance)
+        for (let i = 0; i < State.graphData.length; i++) {
+            const point = State.graphData[i];
+
+            if (point.cycle < startCycle - cyclesPerDiv) continue; // Skip old points
+
+            const x = padding.left + (point.cycle - startCycle) * pixelsPerCycle;
+            const y = height - padding.bottom - ((point[dataKey] - minOsm) * yPixelsPerOsm);
+
+            // If we are significantly past the right edge, we can stop
+            if (x > width - padding.right + pixelsPerCycle) break;
+
+            if (!started) {
+                ctx.moveTo(x, y);
+                started = true;
+            } else {
+                ctx.lineTo(x, y);
+            }
+        }
+
+        ctx.stroke();
+        ctx.restore();
+    }
+
+    plotLine('#ef4444', 'deepOsm');    // Red: Deep Medulla
+    plotLine('#3b82f6', 'outflowOsm'); // Blue: Outflow
+
+    // Draw Marker for Max Gradient
+    if (State.maxGradientCycle !== null) {
+        const cx = State.maxGradientCycle;
+        if (cx >= startCycle && cx <= startCycle + maxVisibleCycles) {
+            const x = padding.left + (cx - startCycle) * pixelsPerCycle;
+            const y = height - padding.bottom - (1200 * yPixelsPerOsm);
+
+            // Should be visible since we checked range
+            if (x >= padding.left && x <= width - padding.right) {
+                ctx.fillStyle = '#facc15';
+                ctx.beginPath();
+                ctx.arc(x, y, 4, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillText('1200', x, y - 10);
+            }
+        }
+    }
+
+} // End of updateGraph
+
+// Start when DOM is ready
+document.addEventListener('DOMContentLoaded', init);
+
+</script>
+</body>
+
+</html>
